@@ -16,3 +16,6 @@ python codeGenerator.py sample.csv output.xml
 Tested against BODS version:
 14.2.10.1748
 In theory it should work with other versions of BODS
+
+Upcoming changes:
+- Adding dataflow to a workflow
