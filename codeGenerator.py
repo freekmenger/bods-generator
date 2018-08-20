@@ -5,12 +5,12 @@ from lxml import etree
 
 def read_csv(i_filename):
     ''' 
-    i_filename: the directory and filename of the csv file that will be read
+    i_filename: the directory and filename of the csv file (semicolon separated) that will be read
     Header row will be ignored. File structure: type, name, parent, source, target
     Types:
-    - job: has name
-    - workflow: has name, parent (opt)
-    - dataflow: has name, parent (opt), source (opt), target (opt)
+    - job: has name, comma separated sub-objects (opt)
+    - workflow: has name, comma separated sub-objects (opt)
+    - dataflow: has name, source (opt), target (opt)
     - transformation: has name, parent, source, target
     Returns all the BodsObjects in a list
     '''
@@ -47,16 +47,20 @@ class BodsObject(object):
     ''' 
     BodsObject: a BodsObject that can be of different types (job, workflow, dataflow)
     '''
-    def __init__(self, type, name):
+    def __init__(self, type, name, subobjects):
         #create a BodsObject with type type
         self.type = type
         self.name = name
+        self.subobjects = subobjects
     def getType(self):
         #return the type
         return self.type
     def getName(self):
         #return the name
         return self.name
+    def getSubobjects(self):
+        #return the subobjects
+        return self.subobjects
     def genXML(self, root, doc):
         ''' 
         root - root xml document (etree module)
@@ -78,6 +82,9 @@ class BodsObject(object):
         '''
         DIJob= etree.SubElement(root, 'DIJob', name=self.name, typeId='2')
         DISteps = etree.SubElement(DIJob, 'DISteps')
+        if len(self.subobjects) > 0:
+            for subObject in self.subobjects.split(','):
+                DICallStep = etree.SubElement(DISteps, 'DICallStep', typeId="0", calledObjectType="Workflow", name=subObject)
         DIAttributes = etree.SubElement(DIJob, 'DIAttributes')
         DIAttribute1 = etree.SubElement(DIAttributes, 'DIAttribute', name="job_checkpoint_enabled", value="no")
         DIAttribute2 = etree.SubElement(DIAttributes, 'DIAttribute', name="job_collect_statistics", value="no")
@@ -133,9 +140,12 @@ class BodsObject(object):
         root - root xml document (etree module)
         doc - document element tree under the root xml document (etree module)
         Returns doc - add the workflow xml objects to the xml tree
-        '''        
+        '''
         DIWorkflow= etree.SubElement(root, 'DIWorkflow', name=self.name, typeId='2')
-        DISteps = etree.SubElement(DIJob, 'DISteps')
+        DISteps = etree.SubElement(DIWorkflow, 'DISteps')
+        if len(self.subobjects) > 0:
+            for subObject in self.subobjects.split(','):
+                DICallStep = etree.SubElement(DISteps, 'DICallStep', typeId="1", calledObjectType="Dataflow", name=subObject)
         DIAttributes = etree.SubElement(DIWorkflow, 'DIAttributes')
         DIAttribute1 = etree.SubElement(DIAttributes, 'DIAttribute', name="run_once", value="no")
         DIAttribute2 = etree.SubElement(DIAttributes, 'DIAttribute', name="unit_of_recovery", value="no")
@@ -172,7 +182,7 @@ if __name__ == '__main__':
     l_bObjects = read_csv(l_filename)
     l_BOlist = []
     for object in l_bObjects:
-        l_BOlist.append(BodsObject(object[0],object[1]))
+        l_BOlist.append(BodsObject(object[0],object[1],object[2]))
         #Do specific generation task associated with each object type
         #E.g. if dataflow, first the tables should be generated (separate BodsObjects)
     i_output = str(sys.argv[2])
